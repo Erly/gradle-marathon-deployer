@@ -35,10 +35,11 @@ class DeployTaskBase extends DefaultTask  {
         }
 
         def marathonApiUrl = "${pluginExtension.url}/v2"
+        def String deploymentRequestTimeout = pluginExtension.deploymentRequestTimeout ?: new TimeDuration(0, 0, 30, 0)
+        def String verificationTimeout = pluginExtension.verificationTimeout ?:  new TimeDuration(0, 0, 30, 0)
         def marathonJsonEnvelope = marathonJsonFactory(pluginExtension)
         def String applicationId = marathonJsonEnvelope.getApplicationId()
         def String marathonJson = marathonJsonEnvelope.getFinalJson(logger)
-        def String deploymentId
         def eventStream = new FinishedDeploymentVerifier(client, jsonSlurper, marathonApiUrl, logger)
         // we need to start capturing deployments before making actual deployment request
         // if we have started reading the stream after the request, there might be a race condition of the deployment finishing before us attaching
@@ -55,7 +56,7 @@ class DeployTaskBase extends DefaultTask  {
             throw new MarathonDeployerException("Error when requesting to deploy application to Marathon", e)
         }
 
-        if (!eventStream.isDeploymentFinished(deploymentId, new TimeDuration(0, 0, 30, 0))) {
+        if (!eventStream.isDeploymentFinished(deploymentId, deploymentRequestTimeout)) {
             throw new MarathonDeployerException("The application deployment did not finish in the defined timeout. Deployment_success event for the initiated deployment did not appear in the event stream.")
         } else {
             println("Deployment was successful")
